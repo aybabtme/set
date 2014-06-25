@@ -6,13 +6,19 @@ import (
 	"testing"
 )
 
-func TestGoMapSetEmpty(t *testing.T) { setTest(t, set.NewGoMapSet(0), []string{}) }
-func TestGoMapSetOne(t *testing.T)   { setTest(t, set.NewGoMapSet(0), []string{"A"}) }
-func TestGoMapSetMany(t *testing.T)  { setTest(t, set.NewGoMapSet(0), []string{"A", "B", "C"}) }
+func TestGoMapEmpty(t *testing.T) { setTest(t, set.NewGoMapSet(0), []string{}) }
+func TestGoMapOne(t *testing.T)   { setTest(t, set.NewGoMapSet(0), []string{"A"}) }
+func TestGoMapMany(t *testing.T)  { setTest(t, set.NewGoMapSet(0), []string{"A", "B", "C"}) }
+func TestGoMapOperations(t *testing.T) {
+	checkSetOp(t, func() set.Set { return set.NewGoMapSet(0) })
+}
 
-func TestGoMapSet100Empty(t *testing.T) { setTest(t, set.NewGoMapSet(100), []string{}) }
-func TestGoMapSet100One(t *testing.T)   { setTest(t, set.NewGoMapSet(100), []string{"A"}) }
-func TestGoMapSet100Many(t *testing.T)  { setTest(t, set.NewGoMapSet(100), []string{"A", "B", "C"}) }
+func TestGoMap100Empty(t *testing.T) { setTest(t, set.NewGoMapSet(100), []string{}) }
+func TestGoMap100One(t *testing.T)   { setTest(t, set.NewGoMapSet(100), []string{"A"}) }
+func TestGoMap100Many(t *testing.T)  { setTest(t, set.NewGoMapSet(100), []string{"A", "B", "C"}) }
+func TestGoMap100Operations(t *testing.T) {
+	checkSetOp(t, func() set.Set { return set.NewGoMapSet(100) })
+}
 
 // Verifies proper implementation of a set.Set
 
@@ -47,14 +53,14 @@ func setTest(t *testing.T, a set.Set, want []string) {
 		t.Fatalf("should have size %d after insertions", len(want))
 	}
 
-	// notA := set.NewGoMapSet(setA.Len())
-	// set.Difference(setA, a, notA)
+	notA := set.NewGoMapSet(setA.Len())
+	set.Difference(setA, a, notA)
 
-	// for _, k := range notA.Keys() {
-	// 	if a.Contains(k) {
-	// 		t.Fatalf("should no contain %q", k)
-	// 	}
-	// }
+	for _, k := range notA.Keys() {
+		if a.Contains(k) {
+			t.Fatalf("should no contain %q", k)
+		}
+	}
 
 	if a.Len() != len(want) {
 		t.Fatalf("should have size %d checking invalid values", len(want))
@@ -107,6 +113,10 @@ func listableTest(t *testing.T, a set.ListSet, want []string) {
 
 // Assuming proper implementation of the set, this test suite covers
 // all classes for which the Union/Intersection/Difference/XOR are valid.
+//
+// The flaw in this claim is in its supposition that set.GoMapSet is correct.
+// However, if set.GoMapSet is not correct, it will likely fail the part of
+// it's test that don't depend on set operations.
 
 func TestUnionEmpty(t *testing.T)      { union(t, []string{}, []string{}, []string{}) }
 func TestUnionLeftEmpty(t *testing.T)  { union(t, []string{}, []string{"A"}, []string{"A"}) }
@@ -140,32 +150,29 @@ func TestXORSingle(t *testing.T) {
 	xor(t, []string{"A", "B", "C"}, []string{"A", "B", "D"}, []string{"C", "D"})
 }
 
+// If the baseline works, any Set can be used as output
+
+type operation func(set.ListSet, set.ListSet, set.Set)
+
 // relax the function definition to accept more specialized ListSet instead of Set
-func relax(f func(set.ListSet, set.Set, set.Set)) func(set.ListSet, set.ListSet, set.Set) {
+func relax(f func(set.ListSet, set.Set, set.Set)) operation {
 	return func(a, b set.ListSet, out set.Set) { f(a, b, out) }
 }
 
-func union(t *testing.T, a, b, want []string) {
-	checkOp(t, a, b, want, set.Union)
+func union(t *testing.T, a, b, want []string) { checkOp(t, a, b, want, set.Union) }
+func inter(t *testing.T, a, b, want []string) { checkOp(t, a, b, want, relax(set.Intersect)) }
+func diff(t *testing.T, a, b, want []string)  { checkOp(t, a, b, want, relax(set.Difference)) }
+func xor(t *testing.T, a, b, want []string)   { checkOp(t, a, b, want, set.XOR) }
+
+func checkOp(t *testing.T, a, b, want []string, op operation) {
+	checkOpBuilder(t, a, b, want, op, func() set.Set { return set.NewGoMapSet(0) })
 }
 
-func inter(t *testing.T, a, b, want []string) {
-	checkOp(t, a, b, want, relax(set.Intersect))
-}
-
-func diff(t *testing.T, a, b, want []string) {
-	checkOp(t, a, b, want, relax(set.Difference))
-}
-
-func xor(t *testing.T, a, b, want []string) {
-	checkOp(t, a, b, want, set.XOR)
-}
-
-func checkOp(t *testing.T, a, b, want []string, op func(set.ListSet, set.ListSet, set.Set)) {
+func checkOpBuilder(t *testing.T, a, b, want []string, op operation, outbuild func() set.Set) {
 	A := setFromList(a)
 	B := setFromList(b)
 	Want := setFromList(want)
-	Out := set.NewGoMapSet(len(want))
+	Out := outbuild()
 
 	op(A, B, Out)
 
@@ -175,9 +182,82 @@ func checkOp(t *testing.T, a, b, want []string, op func(set.ListSet, set.ListSet
 		}
 	}
 
-	for _, k := range Out.Keys() {
+	listable, ok := Out.(set.ListSet)
+	if !ok {
+		t.Skip("weaker guaranty: can't assert that %T really supports %T, %T is not listable", Out, op, Out)
+	}
+
+	for _, k := range listable.Keys() {
 		if !Want.Contains(k) {
 			t.Errorf("extra %q", k)
+		}
+	}
+}
+
+// Test suite to assert that a set.Set properly supports set operations.
+// This is a rehash of the the tests used to assert the operations are
+// correct to begin with.
+
+type setcase struct {
+	op    operation
+	cases []opcase
+}
+type opcase struct{ A, B, Want []string }
+
+var setOpsTT = []setcase{
+	{
+		op: set.Union,
+		cases: []opcase{
+			{A: []string{}, B: []string{}, Want: []string{}},
+			{A: []string{}, B: []string{"A"}, Want: []string{"A"}},
+			{A: []string{"A"}, B: []string{}, Want: []string{"A"}},
+			{A: []string{"A"}, B: []string{"B"}, Want: []string{"A", "B"}},
+			{A: []string{"A", "B"}, B: []string{"B", "C"}, Want: []string{"A", "B", "C"}},
+		},
+	},
+	{
+		op: relax(set.Intersect),
+		cases: []opcase{
+			{A: []string{}, B: []string{}, Want: []string{}},
+			{A: []string{}, B: []string{"A"}, Want: []string{}},
+			{A: []string{"A"}, B: []string{}, Want: []string{}},
+			{A: []string{"A"}, B: []string{"B"}, Want: []string{}},
+			{A: []string{"A", "B"}, B: []string{"B", "C"}, Want: []string{"B"}},
+		},
+	},
+	{
+		op: relax(set.Difference),
+		cases: []opcase{
+			{A: []string{}, B: []string{}, Want: []string{}},
+			{A: []string{}, B: []string{"A"}, Want: []string{}},
+			{A: []string{"A"}, B: []string{}, Want: []string{"A"}},
+			{A: []string{"A"}, B: []string{"B"}, Want: []string{"A"}},
+			{A: []string{"A", "B", "C"}, B: []string{"A", "B", "D"}, Want: []string{"C"}},
+		},
+	},
+	{
+		op: set.XOR,
+		cases: []opcase{
+			{A: []string{}, B: []string{}, Want: []string{}},
+			{A: []string{}, B: []string{"A"}, Want: []string{"A"}},
+			{A: []string{"A"}, B: []string{}, Want: []string{"A"}},
+			{A: []string{"A"}, B: []string{"B"}, Want: []string{"A", "B"}},
+			{A: []string{"A", "B", "C"}, B: []string{"A", "B", "D"}, Want: []string{"C", "D"}},
+		},
+	},
+}
+
+func checkSetOp(t *testing.T, out func() set.Set) {
+	for _, operations := range setOpsTT {
+		for _, cases := range operations.cases {
+			checkOpBuilder(
+				t,
+				cases.A,
+				cases.B,
+				cases.Want,
+				operations.op,
+				out,
+			)
 		}
 	}
 }
