@@ -3,6 +3,7 @@ package set_test
 import (
 	"github.com/aybabtme/set"
 	"sort"
+	"sync"
 	"testing"
 )
 
@@ -18,20 +19,6 @@ func TestGoMap_100One(t *testing.T)   { setTest(t, set.NewGoMap(100), []string{"
 func TestGoMap_100Many(t *testing.T)  { setTest(t, set.NewGoMap(100), []string{"A", "B", "C"}) }
 func TestGoMap_100Operations(t *testing.T) {
 	checkSetOp(t, func() set.Set { return set.NewGoMap(100) })
-}
-
-func TestHashSHA1_Empty(t *testing.T) { setTest(t, set.NewHashSHA1(0), []string{}) }
-func TestHashSHA1_One(t *testing.T)   { setTest(t, set.NewHashSHA1(0), []string{"A"}) }
-func TestHashSHA1_Many(t *testing.T)  { setTest(t, set.NewHashSHA1(0), []string{"A", "B", "C"}) }
-func TestHashSHA1_Operations(t *testing.T) {
-	checkSetOp(t, func() set.Set { return set.NewHashSHA1(0) })
-}
-
-func TestHashSHA1_100Empty(t *testing.T) { setTest(t, set.NewHashSHA1(100), []string{}) }
-func TestHashSHA1_100One(t *testing.T)   { setTest(t, set.NewHashSHA1(100), []string{"A"}) }
-func TestHashSHA1_100Many(t *testing.T)  { setTest(t, set.NewHashSHA1(100), []string{"A", "B", "C"}) }
-func TestHashSHA1_100Operations(t *testing.T) {
-	checkSetOp(t, func() set.Set { return set.NewHashSHA1(100) })
 }
 
 // Verifies proper implementation of a set.Set
@@ -182,6 +169,8 @@ func checkOp(t *testing.T, a, b, want []string, op operation) {
 	checkOpBuilder(t, a, b, want, op, func() set.Set { return set.NewGoMap(0) })
 }
 
+var once *sync.Once
+
 func checkOpBuilder(t *testing.T, a, b, want []string, op operation, outbuild func() set.Set) {
 	A := setFromList(a)
 	B := setFromList(b)
@@ -198,7 +187,10 @@ func checkOpBuilder(t *testing.T, a, b, want []string, op operation, outbuild fu
 
 	listable, ok := Out.(set.ListSet)
 	if !ok {
-		t.Logf("weaker guarantee: %T is not listable. operations partialy tested", Out)
+		if once == nil {
+			once = &sync.Once{}
+		}
+		once.Do(func() { t.Logf("weaker guarantee: %T is not listable. operations partialy tested", Out) })
 		return
 	}
 

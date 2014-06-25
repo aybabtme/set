@@ -19,20 +19,6 @@ import (
 	"time"
 )
 
-var impls = map[string]struct {
-	s    set.Set
-	name string
-}{
-	"gomap": {
-		name: "GoMap",
-		s:    set.NewGoMap(8096),
-	},
-	"hashsha1": {
-		name: "HashSHA1",
-		s:    set.NewHashSHA1(8096),
-	},
-}
-
 func memplotCommand() ([]cli.Flag, func(*cli.Context)) {
 
 	fileFlag := cli.StringFlag{Name: "file", Usage: "file containing the keys to read from"}
@@ -122,7 +108,7 @@ func memplotCommand() ([]cli.Flag, func(*cli.Context)) {
 		ext := filepath.Ext(base)
 		cleanname := base[:len(base)-len(ext)]
 
-		plotname := fmt.Sprintf("%s_%s.svg", cleanname, setName)
+		plotname := fmt.Sprintf("%s_%s.png", cleanname, setName)
 		log.Printf("saving to %q (%gx%g)", plotname, width, height)
 		if err := p.Save(width, height, plotname); err != nil {
 			log.Printf("saving=%q\terror=%v", plotname, err)
