@@ -25,5 +25,5 @@ Others:
 
 Most HashSet implementations use the work of Damian Gryski. 
 
-The 32 bits versions GPLv3. Read the details here: https://github.com/dgryski/dgohash/blob/master/murmur3.go
+The 32 bits versions are GPLv3. Read the details here: https://github.com/dgryski/dgohash/blob/master/murmur3.go
 
