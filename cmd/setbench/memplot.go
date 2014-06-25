@@ -24,8 +24,12 @@ var impls = map[string]struct {
 	name string
 }{
 	"gomap": {
-		name: "github.com/aybabtme/set.GoMapSet",
+		name: "GoMap",
 		s:    set.NewGoMap(8096),
+	},
+	"hashsha1": {
+		name: "HashSHA1",
+		s:    set.NewHashSHA1(8096),
 	},
 }
 
@@ -56,7 +60,7 @@ func memplotCommand() ([]cli.Flag, func(*cli.Context)) {
 			hadError = false
 		}
 		if hadError {
-			cli.ShowAppHelp(c)
+			cli.ShowCommandHelp(c, c.Command.Name)
 			return
 		}
 
