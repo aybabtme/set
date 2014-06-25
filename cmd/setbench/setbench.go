@@ -38,10 +38,12 @@ func main() {
 	}
 }
 
-var impls = map[string]struct {
-	s    set.Set
+type setimpl struct {
 	name string
-}{
+	s    set.Set
+}
+
+var impls = map[string]setimpl{
 	"gomap":         {name: "GoMap", s: set.NewGoMap(0)},
 	"hashsha1":      {name: "HashSHA1", s: set.NewHashSHA1(0)},
 	"spooky128":     {name: "Spooky128", s: set.NewSpooky128(0)},

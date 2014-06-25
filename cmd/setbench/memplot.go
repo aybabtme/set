@@ -50,7 +50,7 @@ func memplotCommand() ([]cli.Flag, func(*cli.Context)) {
 			return
 		}
 
-		set, setName, err := setImpl(settype)
+		sets, err := setImpl(settype)
 		if err != nil {
 			log.Printf("Bad type flag: %v", err)
 			return
@@ -74,45 +74,55 @@ func memplotCommand() ([]cli.Flag, func(*cli.Context)) {
 
 		log.Printf("key-count=%d", len(keys))
 
-		keyfactor := 100
+		log.Printf("doing %d benchmarks", len(sets))
+		for i, s := range sets {
+			runtime.GC()
+			doMemBenchmark(s.name, s.s, keys, filename, width, height)
+			log.Printf("%d/%d done", i+1, len(sets))
+		}
 
-		log.Printf("benchmarking...")
-		start := time.Now()
-		n := len(keys)/keyfactor + 2
-		results := benchkit.Bench(benchkit.Memory(n)).Each(func(each benchkit.BenchEach) {
-			lastj := 0
-			each.Before(0)
-			for j, key := range keys {
+	}
+}
 
-				if j%keyfactor == 0 {
-					each.After(lastj)
-					each.Before(lastj + 1)
-					lastj++
-				}
-				set.Add(key.Key)
+func doMemBenchmark(setName string, set set.Set, keys []s3.Key, filename string, width, height float64) {
+	keyfactor := 100
 
+	log.Printf("benchmarking %q...", setName)
+	start := time.Now()
+	n := len(keys)/keyfactor + 2
+	results := benchkit.Bench(benchkit.Memory(n)).Each(func(each benchkit.BenchEach) {
+		lastj := 0
+		each.Before(0)
+		for j, key := range keys {
+
+			if j%keyfactor == 0 {
+				each.After(lastj)
+				each.Before(lastj + 1)
+				lastj++
 			}
-			each.After(lastj)
-		}).(*benchkit.MemResult)
-		log.Printf("done in %v", time.Since(start))
+			set.Add(key.Key)
 
-		plottitle := fmt.Sprintf("Insertion of %d keys in a %s", len(keys), setName)
-		log.Printf("plotting %q", plottitle)
-		p, err := benchplot.PlotMemory(plottitle, fmt.Sprintf("times %d keys", keyfactor), results)
-		if err != nil {
-			log.Printf("plotting=%q\terror=%v", plottitle, err)
-			return
 		}
+		each.After(lastj)
+	}).(*benchkit.MemResult)
+	log.Printf("done in %v", time.Since(start))
 
-		base := filepath.Base(filename)
-		ext := filepath.Ext(base)
-		cleanname := base[:len(base)-len(ext)]
+	plottitle := fmt.Sprintf("Insertion of %d keys in a %s", len(keys), setName)
+	log.Printf("plotting %q", plottitle)
+	p, err := benchplot.PlotMemory(plottitle, fmt.Sprintf("times %d keys", keyfactor), results, false)
+	if err != nil {
+		log.Printf("plotting=%q\terror=%v", plottitle, err)
+		return
+	}
 
-		plotname := fmt.Sprintf("%s_%s.png", cleanname, setName)
-		log.Printf("saving to %q (%gx%g)", plotname, width, height)
-		if err := p.Save(width, height, plotname); err != nil {
-			log.Printf("saving=%q\terror=%v", plotname, err)
-		}
+	base := filepath.Base(filename)
+	ext := filepath.Ext(base)
+	cleanname := base[:len(base)-len(ext)]
+
+	plotname := fmt.Sprintf("%s_%s.png", cleanname, setName)
+	log.Printf("saving to %q (%gx%g)", plotname, width, height)
+	if err := p.Save(width, height, plotname); err != nil {
+		log.Printf("saving=%q\terror=%v", plotname, err)
 	}
 }
 
@@ -134,7 +144,14 @@ func decodeKeys(r io.Reader) ([]s3.Key, error) {
 	return keys, err
 }
 
-func setImpl(settype string) (set.Set, string, error) {
+func setImpl(settype string) (out []setimpl, err error) {
+
+	if settype == "all" {
+		for _, impl := range impls {
+			out = append(out, impl)
+		}
+		return out, nil
+	}
 
 	impl, ok := impls[settype]
 	if !ok {
@@ -143,10 +160,12 @@ func setImpl(settype string) (set.Set, string, error) {
 			keys = append(keys, k)
 		}
 
-		return nil, "", fmt.Errorf("%q is not a valid set type, valids types are: %s",
+		return nil, fmt.Errorf("%q is not a valid set type, valids types are: %s",
 			settype,
 			strings.Join(keys, ", "))
 	}
 
-	return impl.s, impl.name, nil
+	out = append(out, impl)
+
+	return
 }
