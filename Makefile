@@ -27,7 +27,11 @@ fmt:
 	@echo "=== go fmt ==="
 	@go fmt ./...
 
-test: failfmt vet lint errcheck
+test: fmt vet lint errcheck
+	@echo "=== go test ==="
+	@go test ./... -v -cover
+
+travistest: failfmt vet
 	@echo "=== go test ==="
 	@go test ./... -v -cover
 
