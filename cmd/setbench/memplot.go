@@ -25,7 +25,7 @@ var impls = map[string]struct {
 }{
 	"gomap": {
 		name: "github.com/aybabtme/set.GoMapSet",
-		s:    set.NewGoMapSet(8096),
+		s:    set.NewGoMap(8096),
 	},
 }
 

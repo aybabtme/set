@@ -23,19 +23,19 @@ func init() {
 	log.Printf("|A| = %d", A.Len())
 	log.Printf("|B| = %d", B.Len())
 
-	u := set.NewGoMapSet(0)
+	u := set.NewGoMap(0)
 	set.Union(A, B, u)
 	log.Printf("|A ∪ B| = %d", u.Len())
 
-	i := set.NewGoMapSet(0)
+	i := set.NewGoMap(0)
 	set.Intersect(A, B, i)
 	log.Printf("|A ∩ B| = %d", i.Len())
 
-	d := set.NewGoMapSet(0)
+	d := set.NewGoMap(0)
 	set.Difference(A, B, d)
 	log.Printf("|A - B| = %d", d.Len())
 
-	x := set.NewGoMapSet(0)
+	x := set.NewGoMap(0)
 	set.XOR(A, B, x)
 	log.Printf("|A ⊕ B| = %d", x.Len())
 }
@@ -63,8 +63,8 @@ func loadWordlist(filename string) (out []string) {
 	return
 }
 
-func setFromList(words []string) set.GoMapSet {
-	s := set.NewGoMapSet(len(words))
+func setFromList(words []string) set.GoMap {
+	s := set.NewGoMap(len(words))
 	for _, word := range words {
 		s[word] = q
 	}

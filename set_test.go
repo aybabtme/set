@@ -6,18 +6,32 @@ import (
 	"testing"
 )
 
-func TestGoMapEmpty(t *testing.T) { setTest(t, set.NewGoMapSet(0), []string{}) }
-func TestGoMapOne(t *testing.T)   { setTest(t, set.NewGoMapSet(0), []string{"A"}) }
-func TestGoMapMany(t *testing.T)  { setTest(t, set.NewGoMapSet(0), []string{"A", "B", "C"}) }
-func TestGoMapOperations(t *testing.T) {
-	checkSetOp(t, func() set.Set { return set.NewGoMapSet(0) })
+func TestGoMap_Empty(t *testing.T) { setTest(t, set.NewGoMap(0), []string{}) }
+func TestGoMap_One(t *testing.T)   { setTest(t, set.NewGoMap(0), []string{"A"}) }
+func TestGoMap_Many(t *testing.T)  { setTest(t, set.NewGoMap(0), []string{"A", "B", "C"}) }
+func TestGoMap_Operations(t *testing.T) {
+	checkSetOp(t, func() set.Set { return set.NewGoMap(0) })
 }
 
-func TestGoMap100Empty(t *testing.T) { setTest(t, set.NewGoMapSet(100), []string{}) }
-func TestGoMap100One(t *testing.T)   { setTest(t, set.NewGoMapSet(100), []string{"A"}) }
-func TestGoMap100Many(t *testing.T)  { setTest(t, set.NewGoMapSet(100), []string{"A", "B", "C"}) }
-func TestGoMap100Operations(t *testing.T) {
-	checkSetOp(t, func() set.Set { return set.NewGoMapSet(100) })
+func TestGoMap_100Empty(t *testing.T) { setTest(t, set.NewGoMap(100), []string{}) }
+func TestGoMap_100One(t *testing.T)   { setTest(t, set.NewGoMap(100), []string{"A"}) }
+func TestGoMap_100Many(t *testing.T)  { setTest(t, set.NewGoMap(100), []string{"A", "B", "C"}) }
+func TestGoMap_100Operations(t *testing.T) {
+	checkSetOp(t, func() set.Set { return set.NewGoMap(100) })
+}
+
+func TestHashSHA1_Empty(t *testing.T) { setTest(t, set.NewHashSHA1(0), []string{}) }
+func TestHashSHA1_One(t *testing.T)   { setTest(t, set.NewHashSHA1(0), []string{"A"}) }
+func TestHashSHA1_Many(t *testing.T)  { setTest(t, set.NewHashSHA1(0), []string{"A", "B", "C"}) }
+func TestHashSHA1_Operations(t *testing.T) {
+	checkSetOp(t, func() set.Set { return set.NewHashSHA1(0) })
+}
+
+func TestHashSHA1_100Empty(t *testing.T) { setTest(t, set.NewHashSHA1(100), []string{}) }
+func TestHashSHA1_100One(t *testing.T)   { setTest(t, set.NewHashSHA1(100), []string{"A"}) }
+func TestHashSHA1_100Many(t *testing.T)  { setTest(t, set.NewHashSHA1(100), []string{"A", "B", "C"}) }
+func TestHashSHA1_100Operations(t *testing.T) {
+	checkSetOp(t, func() set.Set { return set.NewHashSHA1(100) })
 }
 
 // Verifies proper implementation of a set.Set
@@ -53,7 +67,7 @@ func setTest(t *testing.T, a set.Set, want []string) {
 		t.Fatalf("should have size %d after insertions", len(want))
 	}
 
-	notA := set.NewGoMapSet(setA.Len())
+	notA := set.NewGoMap(setA.Len())
 	set.Difference(setA, a, notA)
 
 	for _, k := range notA.Keys() {
@@ -165,7 +179,7 @@ func diff(t *testing.T, a, b, want []string)  { checkOp(t, a, b, want, relax(set
 func xor(t *testing.T, a, b, want []string)   { checkOp(t, a, b, want, set.XOR) }
 
 func checkOp(t *testing.T, a, b, want []string, op operation) {
-	checkOpBuilder(t, a, b, want, op, func() set.Set { return set.NewGoMapSet(0) })
+	checkOpBuilder(t, a, b, want, op, func() set.Set { return set.NewGoMap(0) })
 }
 
 func checkOpBuilder(t *testing.T, a, b, want []string, op operation, outbuild func() set.Set) {
@@ -184,7 +198,8 @@ func checkOpBuilder(t *testing.T, a, b, want []string, op operation, outbuild fu
 
 	listable, ok := Out.(set.ListSet)
 	if !ok {
-		t.Skip("weaker guaranty: can't assert that %T really supports %T, %T is not listable", Out, op, Out)
+		t.Logf("weaker guaranty: %T is not listable. operations partialy tested", Out)
+		return
 	}
 
 	for _, k := range listable.Keys() {
