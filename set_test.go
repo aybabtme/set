@@ -198,7 +198,7 @@ func checkOpBuilder(t *testing.T, a, b, want []string, op operation, outbuild fu
 
 	listable, ok := Out.(set.ListSet)
 	if !ok {
-		t.Logf("weaker guaranty: %T is not listable. operations partialy tested", Out)
+		t.Logf("weaker guarantee: %T is not listable. operations partialy tested", Out)
 		return
 	}
 

@@ -1,4 +1,4 @@
-all: test build
+all: test
 
 setup:
 	@go get -u code.google.com/p/go.tools/cmd/vet
@@ -27,16 +27,8 @@ fmt:
 	@echo "=== go fmt ==="
 	@go fmt ./...
 
-install: test
-	@echo "=== go install ==="
-	@go install -ldflags=$(GOLDFLAGS)
-
-build:
-	@echo "=== go build ==="
-	@go build -ldflags=$(GOLDFLAGS) -o brigade
-
 test: failfmt vet lint errcheck
 	@echo "=== go test ==="
-	@go test ./... -cover
+	@go test ./... -v -cover
 
-.PHONY: setup cloc errcheck vet lint fmt install build test deploy
+.PHONY: setup cloc errcheck vet lint failfmt fmt test
