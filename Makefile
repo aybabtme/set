@@ -5,6 +5,7 @@ setup:
 	@go get -u code.google.com/p/go.tools/cmd/cover
 	@go get -u github.com/golang/lint/golint
 	@go get -u github.com/kisielk/errcheck
+	@go get ./...
 
 
 errcheck:
