@@ -7,14 +7,16 @@ import (
 )
 
 var (
-	hash64IsMutable MutableSet = NewHash64(0, nil)
+	hash64IsMutable MutableSet = NewHash64(0, nil, true)
 )
 
 // NewSpooky64 is a Hash64 with spooky hash for hasher.
-func NewSpooky64(n int) *Hash64 { return NewHashFunc64(n, spooky.Hash64) }
+func NewSpooky64(n int, collidePanics bool) *Hash64 {
+	return NewHashFunc64(n, spooky.Hash64, collidePanics)
+}
 
 // NewFarm64 is a Hash64 with farmhash for hasher.
-func NewFarm64(n int) *Hash64 { return NewHashFunc64(n, farm.Hash64) }
+func NewFarm64(n int, collidePanics bool) *Hash64 { return NewHashFunc64(n, farm.Hash64, collidePanics) }
 
 func fromHash64(h64 hash.Hash64) func([]byte) uint64 {
 	return func(b []byte) uint64 {
@@ -26,20 +28,22 @@ func fromHash64(h64 hash.Hash64) func([]byte) uint64 {
 
 // Hash64 is a hash based set, using a 64 bits hasher.
 type Hash64 struct {
-	m    map[uint64]struct{}
-	fh64 func(s []byte) uint64
+	m             map[uint64]struct{}
+	collidePanics bool
+	fh64          func(s []byte) uint64
 }
 
 // NewHash64 creates a hash set using a hash64 hasher.
-func NewHash64(n int, h hash.Hash64) *Hash64 {
-	return NewHashFunc64(n, fromHash64(h))
+func NewHash64(n int, h hash.Hash64, collidePanics bool) *Hash64 {
+	return NewHashFunc64(n, fromHash64(h), collidePanics)
 }
 
 // NewHashFunc64 creates a hash set using a hash64 hasher func.
-func NewHashFunc64(n int, fh64 func(s []byte) uint64) *Hash64 {
+func NewHashFunc64(n int, fh64 func(s []byte) uint64, collidePanics bool) *Hash64 {
 	return &Hash64{
-		m:    make(map[uint64]struct{}, n),
-		fh64: fh64,
+		m:             make(map[uint64]struct{}, n),
+		fh64:          fh64,
+		collidePanics: collidePanics,
 	}
 }
 
@@ -48,7 +52,16 @@ func (m *Hash64) get64Block(s string) uint64 {
 }
 
 // Add the key to the set.
-func (m *Hash64) Add(s string) { m.m[m.get64Block(s)] = q }
+func (m *Hash64) Add(s string) {
+	block := m.get64Block(s)
+	if m.collidePanics {
+		_, ok := m.m[block]
+		if ok {
+			panic("Collision with '" + s + "'")
+		}
+	}
+	m.m[block] = q
+}
 
 // Contains tells if this key was in the set at least once.
 func (m *Hash64) Contains(s string) bool { _, ok := m.m[m.get64Block(s)]; return ok }

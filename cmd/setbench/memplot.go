@@ -4,18 +4,14 @@ import (
 	"fmt"
 	"github.com/aybabtme/benchkit"
 	"github.com/aybabtme/benchkit/benchplot"
-	"github.com/aybabtme/goamz/s3"
-	"github.com/aybabtme/parajson"
 	"github.com/aybabtme/set"
 	"github.com/aybabtme/uniplot/spark"
 	"github.com/codegangsta/cli"
 	"github.com/dustin/go-humanize"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"time"
 )
 
@@ -84,14 +80,18 @@ func memplotCommand() ([]cli.Flag, func(*cli.Context)) {
 	}
 }
 
-func doMemBenchmark(setName string, set set.Set, keys []s3.Key, filename string, width, height float64) {
+func doMemBenchmark(setName string, setter func() set.Set, keys []string, filename string, width, height float64) {
 	keyfactor := 100
 
-	log.Printf("benchmarking %q...", setName)
 	start := time.Now()
 	n := len(keys)/keyfactor + 2
+
+	log.Printf("benchmarking %q...", setName)
+
 	results := benchkit.Bench(benchkit.Memory(n)).Each(func(each benchkit.BenchEach) {
 		lastj := 0
+		set := setter()
+		runtime.GC()
 		each.Before(0)
 		for j, key := range keys {
 
@@ -100,7 +100,7 @@ func doMemBenchmark(setName string, set set.Set, keys []s3.Key, filename string,
 				each.Before(lastj + 1)
 				lastj++
 			}
-			set.Add(key.Key)
+			set.Add(key)
 
 		}
 		each.After(lastj)
@@ -119,53 +119,9 @@ func doMemBenchmark(setName string, set set.Set, keys []s3.Key, filename string,
 	ext := filepath.Ext(base)
 	cleanname := base[:len(base)-len(ext)]
 
-	plotname := fmt.Sprintf("%s_%s.png", cleanname, setName)
+	plotname := fmt.Sprintf("%s_%s.svg", cleanname, setName)
 	log.Printf("saving to %q (%gx%g)", plotname, width, height)
 	if err := p.Save(width, height, plotname); err != nil {
 		log.Printf("saving=%q\terror=%v", plotname, err)
 	}
-}
-
-func decodeKeys(r io.Reader) ([]s3.Key, error) {
-	var keys []s3.Key
-	keyc, errc := parajson.Decode(r, runtime.NumCPU(), func() interface{} {
-		return &s3.Key{}
-	})
-
-	for proto := range keyc {
-		key := proto.(*s3.Key)
-		keys = append(keys, *key)
-	}
-
-	var err error
-	for e := range errc {
-		err = e
-	}
-	return keys, err
-}
-
-func setImpl(settype string) (out []setimpl, err error) {
-
-	if settype == "all" {
-		for _, impl := range impls {
-			out = append(out, impl)
-		}
-		return out, nil
-	}
-
-	impl, ok := impls[settype]
-	if !ok {
-		var keys []string
-		for k := range impls {
-			keys = append(keys, k)
-		}
-
-		return nil, fmt.Errorf("%q is not a valid set type, valids types are: %s",
-			settype,
-			strings.Join(keys, ", "))
-	}
-
-	out = append(out, impl)
-
-	return
 }

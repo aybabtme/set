@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-var hash64table = map[string]func(int) *set.Hash64{
+var hash64table = map[string]func(int, bool) *set.Hash64{
 	"Spooky64":   set.NewSpooky64,
 	"Farmhash64": set.NewFarm64,
 }
@@ -27,17 +27,26 @@ func TestHash64_100Operations(t *testing.T) {
 	checkHash64SetOp(t, 100)
 }
 
+func TestHash64_Collision(t *testing.T) { collisionHash64Test(t) }
+
+func collisionHash64Test(t *testing.T) {
+	for name, hashset := range hash64table {
+		t.Logf("-- Hash64: %q --", name)
+		collisionTest(t, hashset(0, true))
+	}
+}
+
 func checkHash64(t *testing.T, n int, want []string) {
 	for name, hashset := range hash64table {
 		t.Logf("-- Hash64: %q --", name)
 		once = &sync.Once{}
-		setTest(t, hashset(n), want)
+		setTest(t, hashset(n, true), want)
 	}
 }
 func checkHash64SetOp(t *testing.T, n int) {
 	for name, hashset := range hash64table {
 		t.Logf("-- Hash64: %q --", name)
 		once = &sync.Once{}
-		checkSetOp(t, func() set.Set { return hashset(n) })
+		checkSetOp(t, func() set.Set { return hashset(n, false) })
 	}
 }

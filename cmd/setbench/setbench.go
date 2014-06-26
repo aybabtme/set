@@ -1,11 +1,15 @@
 package main
 
 import (
+	"bufio"
+	"fmt"
 	"github.com/aybabtme/set"
 	"github.com/codegangsta/cli"
+	"io"
 	"log"
 	"os"
 	"runtime"
+	"strings"
 )
 
 func NewApp() *cli.App {
@@ -14,6 +18,7 @@ func NewApp() *cli.App {
 	app.Usage = "Benchmarks different properties of set implementations."
 
 	memplotFlags, memplotAction := memplotCommand()
+	timeplotFlags, timeplotAction := timeplotCommand()
 
 	app.Commands = []cli.Command{
 		{
@@ -21,6 +26,12 @@ func NewApp() *cli.App {
 			Usage:  "Plots memory usage over time as keys are inserted in a set.",
 			Flags:  memplotFlags,
 			Action: memplotAction,
+		},
+		{
+			Name:   "timeplot",
+			Usage:  "Plots time per operation as keys are inserted in a set.",
+			Flags:  timeplotFlags,
+			Action: timeplotAction,
 		},
 	}
 
@@ -40,25 +51,50 @@ func main() {
 
 type setimpl struct {
 	name string
-	s    set.Set
+	s    func() set.Set
 }
 
 var impls = map[string]setimpl{
-	"gomap":         {name: "GoMap", s: set.NewGoMap(0)},
-	"hashsha1":      {name: "HashSHA1", s: set.NewHashSHA1(0)},
-	"spooky128":     {name: "Spooky128", s: set.NewSpooky128(0)},
-	"farmhash128":   {name: "Farmhash128", s: set.NewFarm128(0)},
-	"spooky64":      {name: "Spooky64", s: set.NewSpooky64(0)},
-	"farmhash64":    {name: "Farmhash64", s: set.NewFarm64(0)},
-	"spooky32":      {name: "Spooky32", s: set.NewSpooky32(0)},
-	"farmhash32":    {name: "Farmhash32", s: set.NewFarm32(0)},
-	"adler32":       {name: "Adler32", s: set.NewAdler32(0)},
-	"murmur32":      {name: "Murmur32", s: set.NewMurmur32(0)},
-	"djb32":         {name: "Djb32", s: set.NewDjb32(0)},
-	"elf32":         {name: "Elf32", s: set.NewElf32(0)},
-	"java32":        {name: "Java32", s: set.NewJava32(0)},
-	"jenkins32":     {name: "Jenkins32", s: set.NewJenkins32(0)},
-	"sdbm32":        {name: "SDBM32", s: set.NewSDBM32(0)},
-	"sqlite32":      {name: "SQLite32", s: set.NewSQLite32(0)},
-	"superfasthash": {name: "SuperFastHash", s: set.NewSuperFastHash(0)},
+	"gomap":       {name: "GoMap", s: func() set.Set { return set.NewGoMap(0) }},
+	"hashsha1":    {name: "HashSHA1", s: func() set.Set { return set.NewHashSHA1(0, true) }},
+	"spooky128":   {name: "Spooky128", s: func() set.Set { return set.NewSpooky128(0, true) }},
+	"farmhash128": {name: "Farmhash128", s: func() set.Set { return set.NewFarm128(0, true) }},
+	"spooky64":    {name: "Spooky64", s: func() set.Set { return set.NewSpooky64(0, true) }},
+	"farmhash64":  {name: "Farmhash64", s: func() set.Set { return set.NewFarm64(0, true) }},
+}
+
+func decodeKeys(r io.Reader) (out []string, err error) {
+	scan := bufio.NewScanner(r)
+	scan.Split(bufio.ScanLines)
+	for scan.Scan() {
+		out = append(out, scan.Text())
+	}
+	err = scan.Err()
+	return
+}
+
+func setImpl(settype string) (out []setimpl, err error) {
+
+	if settype == "all" {
+		for _, impl := range impls {
+			out = append(out, impl)
+		}
+		return out, nil
+	}
+
+	impl, ok := impls[settype]
+	if !ok {
+		var keys []string
+		for k := range impls {
+			keys = append(keys, k)
+		}
+
+		return nil, fmt.Errorf("%q is not a valid set type, valids types are: %s",
+			settype,
+			strings.Join(keys, ", "))
+	}
+
+	out = append(out, impl)
+
+	return
 }

@@ -7,9 +7,10 @@ import (
 	"testing"
 )
 
-func TestGoMap_Empty(t *testing.T) { setTest(t, set.NewGoMap(0), []string{}) }
-func TestGoMap_One(t *testing.T)   { setTest(t, set.NewGoMap(0), []string{"A"}) }
-func TestGoMap_Many(t *testing.T)  { setTest(t, set.NewGoMap(0), []string{"A", "B", "C"}) }
+func TestGoMap_Collision(t *testing.T) { collisionTest(t, set.NewGoMap(0)) }
+func TestGoMap_Empty(t *testing.T)     { setTest(t, set.NewGoMap(0), []string{}) }
+func TestGoMap_One(t *testing.T)       { setTest(t, set.NewGoMap(0), []string{"A"}) }
+func TestGoMap_Many(t *testing.T)      { setTest(t, set.NewGoMap(0), []string{"A", "B", "C"}) }
 func TestGoMap_Operations(t *testing.T) {
 	checkSetOp(t, func() set.Set { return set.NewGoMap(0) })
 }
@@ -22,6 +23,19 @@ func TestGoMap_100Operations(t *testing.T) {
 }
 
 // Verifies proper implementation of a set.Set
+
+func collisionTest(t *testing.T, a set.Set) {
+	var collisions int
+	for _, word := range setA.Keys() {
+		if a.Contains(word) {
+			collisions++
+		}
+		a.Add(word)
+	}
+	if collisions != 0 {
+		t.Errorf("%d collisions", collisions)
+	}
+}
 
 func setTest(t *testing.T, a set.Set, want []string) {
 
@@ -98,7 +112,7 @@ func listableTest(t *testing.T, a set.ListSet, want []string) {
 	got := a.Keys()
 
 	if len(got) != len(want) {
-		t.Fatalf("want len %d, got len %d", len(want), len(got))
+		t.Fatalf("want %d elements from Keys(), got %d", len(want), len(got))
 	}
 
 	sort.Strings(want)
@@ -125,6 +139,9 @@ func TestUnionRightEmpty(t *testing.T) { union(t, []string{"A"}, []string{}, []s
 func TestUnionDisjoint(t *testing.T)   { union(t, []string{"A"}, []string{"B"}, []string{"A", "B"}) }
 func TestUnionMany(t *testing.T) {
 	union(t, []string{"A", "B"}, []string{"B", "C"}, []string{"A", "B", "C"})
+}
+func TestUnionManyDisorder(t *testing.T) {
+	union(t, []string{"Z", "A", "B"}, []string{"B", "P", "Y", "C"}, []string{"A", "B", "C", "P", "Y", "Z"})
 }
 
 func TestIntersectEmpty(t *testing.T)      { inter(t, []string{}, []string{}, []string{}) }
@@ -220,6 +237,7 @@ var setOpsTT = []setcase{
 			{A: []string{"A"}, B: []string{}, Want: []string{"A"}},
 			{A: []string{"A"}, B: []string{"B"}, Want: []string{"A", "B"}},
 			{A: []string{"A", "B"}, B: []string{"B", "C"}, Want: []string{"A", "B", "C"}},
+			{A: []string{"Zelda", "A", "B"}, B: []string{"B", "P", "Y", "C"}, Want: []string{"A", "B", "C", "P", "Y", "Z"}},
 		},
 	},
 	{

@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-var hash128table = map[string]func(int) *set.Hash128{
+var hash128table = map[string]func(int, bool) *set.Hash128{
 	"Spooky128":   set.NewSpooky128,
 	"Farmhash128": set.NewFarm128,
 }
@@ -27,17 +27,26 @@ func TestHash128_100Operations(t *testing.T) {
 	checkHash128SetOp(t, 100)
 }
 
+func TestHash128_Collision(t *testing.T) { collisionHash128Test(t) }
+
+func collisionHash128Test(t *testing.T) {
+	for name, hashset := range hash128table {
+		t.Logf("-- Hash128: %q --", name)
+		collisionTest(t, hashset(0, true))
+	}
+}
+
 func checkHash128(t *testing.T, n int, want []string) {
 	for name, hashset := range hash128table {
 		t.Logf("-- Hash128: %q --", name)
 		once = &sync.Once{}
-		setTest(t, hashset(n), want)
+		setTest(t, hashset(n, true), want)
 	}
 }
 func checkHash128SetOp(t *testing.T, n int) {
 	for name, hashset := range hash128table {
 		t.Logf("-- Hash128: %q --", name)
 		once = &sync.Once{}
-		checkSetOp(t, func() set.Set { return hashset(n) })
+		checkSetOp(t, func() set.Set { return hashset(n, false) })
 	}
 }
