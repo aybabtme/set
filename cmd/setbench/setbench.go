@@ -75,8 +75,8 @@ var impls = map[string]setimpl{
 	"spooky64":    {name: "Spooky64", s: func() set.Set { return set.NewSpooky64(0, true) }},
 	"farmhash64":  {name: "Farmhash64", s: func() set.Set { return set.NewFarm64(0, true) }},
 	"ternary":     {name: "TernarySet", s: func() set.Set { return set.NewTernarySet() }},
-	// can't be benchmarked: O(n^2)
-	// "sorted":      {name: "SortedSet", s: func() set.Set { return set.NewSortedSet(0) }},
+	"tchappat":    {name: "TchapPatricia", s: func() set.Set { return set.NewTchapPatricia() }},
+	"quicktrie":   {name: "Quicktrie", s: func() set.Set { return set.NewQuicktrie() }},
 }
 
 func decodeKeys(r io.Reader) (out []string, err error) {

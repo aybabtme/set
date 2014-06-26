@@ -194,6 +194,8 @@ func checkOpBuilder(t *testing.T, a, b, want []string, op operation, outbuild fu
 	Want := setFromList(want)
 	Out := outbuild()
 
+	t.Logf("out=%#v", Out)
+
 	op(A, B, Out)
 
 	for _, k := range Want.Keys() {
@@ -223,6 +225,7 @@ func checkOpBuilder(t *testing.T, a, b, want []string, op operation, outbuild fu
 // correct to begin with.
 
 type setcase struct {
+	name  string
 	op    operation
 	cases []opcase
 }
@@ -230,7 +233,8 @@ type opcase struct{ A, B, Want []string }
 
 var setOpsTT = []setcase{
 	{
-		op: set.Union,
+		name: "set.Union",
+		op:   set.Union,
 		cases: []opcase{
 			{A: []string{}, B: []string{}, Want: []string{}},
 			{A: []string{}, B: []string{"A"}, Want: []string{"A"}},
@@ -241,7 +245,8 @@ var setOpsTT = []setcase{
 		},
 	},
 	{
-		op: relax(set.Intersect),
+		name: "set.Intersect",
+		op:   relax(set.Intersect),
 		cases: []opcase{
 			{A: []string{}, B: []string{}, Want: []string{}},
 			{A: []string{}, B: []string{"A"}, Want: []string{}},
@@ -251,7 +256,8 @@ var setOpsTT = []setcase{
 		},
 	},
 	{
-		op: relax(set.Difference),
+		name: "set.Difference",
+		op:   relax(set.Difference),
 		cases: []opcase{
 			{A: []string{}, B: []string{}, Want: []string{}},
 			{A: []string{}, B: []string{"A"}, Want: []string{}},
@@ -261,7 +267,8 @@ var setOpsTT = []setcase{
 		},
 	},
 	{
-		op: set.XOR,
+		name: "set.XOR",
+		op:   set.XOR,
 		cases: []opcase{
 			{A: []string{}, B: []string{}, Want: []string{}},
 			{A: []string{}, B: []string{"A"}, Want: []string{"A"}},
@@ -274,6 +281,7 @@ var setOpsTT = []setcase{
 
 func checkSetOp(t *testing.T, out func() set.Set) {
 	for _, operations := range setOpsTT {
+		t.Logf("== %s ==", operations.name)
 		for _, cases := range operations.cases {
 			checkOpBuilder(
 				t,
