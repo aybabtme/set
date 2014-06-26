@@ -96,13 +96,13 @@ func mutableTest(t *testing.T, a set.MutableSet, want []string) {
 
 	for _, k := range want {
 		if !a.Contains(k) {
-			t.Fatalf("should contain %q before deletion", q)
+			t.Fatalf("should contain %v before deletion", k)
 		}
 
 		a.Delete(k)
 
 		if a.Contains(k) {
-			t.Fatalf("should NOT contain %q after deletion", q)
+			t.Fatalf("should NOT contain %v after deletion: %#v", k, a)
 		}
 	}
 }
@@ -237,7 +237,7 @@ var setOpsTT = []setcase{
 			{A: []string{"A"}, B: []string{}, Want: []string{"A"}},
 			{A: []string{"A"}, B: []string{"B"}, Want: []string{"A", "B"}},
 			{A: []string{"A", "B"}, B: []string{"B", "C"}, Want: []string{"A", "B", "C"}},
-			{A: []string{"Zelda", "A", "B"}, B: []string{"B", "P", "Y", "C"}, Want: []string{"A", "B", "C", "P", "Y", "Z"}},
+			{A: []string{"Zelda", "A", "B"}, B: []string{"B", "P", "Y", "C"}, Want: []string{"A", "B", "C", "P", "Y", "Zelda"}},
 		},
 	},
 	{

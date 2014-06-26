@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
-	"os"
 )
 
 type ternNode struct {
@@ -103,14 +101,27 @@ func (t *TernarySet) IsEmpty() bool { return t.Len() == 0 }
 // Keys returns all the keys known to this trie
 func (t *TernarySet) Keys() []string {
 	var outCollection []string
-
-	t.Debug(os.Stderr, "hello")
-	collect(t.root, []uint8{}, outCollection)
-
+	collect(t.root, []uint8{}, &outCollection)
 	return outCollection
 }
 
-func (t *TernarySet) Debug(out io.Writer, name string) {
+// Helpers
+
+func collect(x *ternNode, key []byte, outCollection *[]string) {
+	if x == nil {
+		return
+	}
+	collect(x.left, key, outCollection)
+	newKey := append(key, uint8(x.Code))
+	if x.exists {
+		*outCollection = append(*outCollection, string(newKey))
+	}
+	collect(x.child, newKey, outCollection)
+	collect(x.right, key, outCollection)
+}
+
+// DotGraph prints the trie in DOT format.
+func (t *TernarySet) DotGraph(out io.Writer, name string) {
 	buf := bytes.NewBuffer(nil)
 
 	_, _ = fmt.Fprintf(out, "digraph %s {\n", name)
@@ -124,9 +135,8 @@ func visit(x *ternNode, nodes, edges io.Writer) {
 	if x == nil {
 		_, _ = fmt.Fprintln(edges, "nil;")
 		return
-	} else {
-		_, _ = fmt.Fprintf(edges, "%d;\n", x.id)
 	}
+	_, _ = fmt.Fprintf(edges, "%d;\n", x.id)
 
 	if x.exists {
 		fmt.Fprintf(nodes, "\t%d [label=\"%c\", shape = doublecircle];\n", x.id, x.Code)
@@ -141,22 +151,4 @@ func visit(x *ternNode, nodes, edges io.Writer) {
 	_, _ = fmt.Fprintf(edges, "\t%d -> ", x.id)
 	visit(x.right, nodes, edges)
 
-}
-
-// Helpers
-
-func collect(x *ternNode, key []byte, outCollection []string) {
-	if x == nil {
-		return
-	}
-	collect(x.left, key, outCollection)
-	newKey := append(key, uint8(x.Code))
-	if x.exists {
-		log.Printf("collect: %s", string(newKey))
-		outCollection = append(outCollection, string(newKey))
-	} else {
-		log.Printf("NOT collect: %s", string(newKey))
-	}
-	collect(x.child, newKey, outCollection)
-	collect(x.right, key, outCollection)
 }

@@ -95,6 +95,9 @@ func doMemBenchmark(setName string, setter func() set.Set, keys []string, filena
 		each.Before(0)
 		for j, key := range keys {
 
+			if abort {
+				return
+			}
 			if j%keyfactor == 0 {
 				each.After(lastj)
 				each.Before(lastj + 1)
@@ -119,7 +122,7 @@ func doMemBenchmark(setName string, setter func() set.Set, keys []string, filena
 	ext := filepath.Ext(base)
 	cleanname := base[:len(base)-len(ext)]
 
-	plotname := fmt.Sprintf("%s_%s.svg", cleanname, setName)
+	plotname := fmt.Sprintf("memplot_%s_%s.svg", cleanname, setName)
 	log.Printf("saving to %q (%gx%g)", plotname, width, height)
 	if err := p.Save(width, height, plotname); err != nil {
 		log.Printf("saving=%q\terror=%v", plotname, err)

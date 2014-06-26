@@ -8,11 +8,24 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/signal"
 	"runtime"
 	"strings"
 )
 
+var (
+	abort bool
+)
+
 func NewApp() *cli.App {
+
+	go func() {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt, os.Kill)
+		<-c
+		abort = true
+	}()
+
 	app := cli.NewApp()
 	app.Name = "setbench"
 	app.Usage = "Benchmarks different properties of set implementations."
@@ -61,6 +74,9 @@ var impls = map[string]setimpl{
 	"farmhash128": {name: "Farmhash128", s: func() set.Set { return set.NewFarm128(0, true) }},
 	"spooky64":    {name: "Spooky64", s: func() set.Set { return set.NewSpooky64(0, true) }},
 	"farmhash64":  {name: "Farmhash64", s: func() set.Set { return set.NewFarm64(0, true) }},
+	"ternary":     {name: "TernarySet", s: func() set.Set { return set.NewTernarySet() }},
+	// can't be benchmarked: O(n^2)
+	// "sorted":      {name: "SortedSet", s: func() set.Set { return set.NewSortedSet(0) }},
 }
 
 func decodeKeys(r io.Reader) (out []string, err error) {

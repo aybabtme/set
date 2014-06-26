@@ -88,13 +88,16 @@ func doContainsEmptyBenchmark(setName string, setter func() set.Set, keys []stri
 	log.Printf("benchmarking Contains on empty %q...", setName)
 
 	results := benchkit.Bench(benchkit.Time(n, m)).Each(func(each benchkit.BenchEach) {
-		for repeat := 0; repeat < m; repeat++ {
+		for repeat := 0; repeat < m && !abort; repeat++ {
 			log.Printf("doing pass %d/%d", repeat+1, m)
 			lastj := 0
 			set := setter()
 			runtime.GC()
 			each.Before(0)
 			for j, key := range keys {
+				if abort {
+					return
+				}
 
 				if j%keyfactor == 0 {
 					each.After(lastj)
@@ -121,7 +124,7 @@ func doContainsEmptyBenchmark(setName string, setter func() set.Set, keys []stri
 	ext := filepath.Ext(base)
 	cleanname := base[:len(base)-len(ext)]
 
-	plotname := fmt.Sprintf("%s_contains_empty_%s", cleanname, setName)
+	plotname := fmt.Sprintf("timeplot_%s_contains_empty_%s", cleanname, setName)
 	log.Printf("saving to %q (%gx%g)", plotname, width, height)
 
 	if err := p.Save(width, height, plotname+".png"); err != nil {
@@ -139,14 +142,16 @@ func doAddBenchmark(setName string, setter func() set.Set, keys []string, filena
 	log.Printf("benchmarking Add on %q...", setName)
 
 	results := benchkit.Bench(benchkit.Time(n, m)).Each(func(each benchkit.BenchEach) {
-		for repeat := 0; repeat < m; repeat++ {
+		for repeat := 0; repeat < m && !abort; repeat++ {
 			log.Printf("doing pass %d/%d", repeat+1, m)
 			lastj := 0
 			set := setter()
 			runtime.GC()
 			each.Before(0)
 			for j, key := range keys {
-
+				if abort {
+					return
+				}
 				if j%keyfactor == 0 {
 					each.After(lastj)
 					each.Before(lastj + 1)
@@ -172,7 +177,7 @@ func doAddBenchmark(setName string, setter func() set.Set, keys []string, filena
 	ext := filepath.Ext(base)
 	cleanname := base[:len(base)-len(ext)]
 
-	plotname := fmt.Sprintf("%s_add_%s", cleanname, setName)
+	plotname := fmt.Sprintf("timeplot_%s_add_%s", cleanname, setName)
 	log.Printf("saving to %q (%gx%g)", plotname, width, height)
 
 	if err := p.Save(width, height, plotname+".png"); err != nil {
@@ -190,20 +195,25 @@ func doContainsFullBenchmark(setName string, setter func() set.Set, keys []strin
 	log.Printf("benchmarking Contains on full %q...", setName)
 
 	results := benchkit.Bench(benchkit.Time(n, m)).Each(func(each benchkit.BenchEach) {
-		for repeat := 0; repeat < m; repeat++ {
+		for repeat := 0; repeat < m && !abort; repeat++ {
 			log.Printf("doing pass %d/%d", repeat+1, m)
 			lastj := 0
 			set := setter()
 
 			// fill the set
 			for _, key := range keys {
+				if abort {
+					return
+				}
 				set.Add(key)
 			}
 
 			runtime.GC()
 			each.Before(0)
 			for j, key := range keys {
-
+				if abort {
+					return
+				}
 				if j%keyfactor == 0 {
 					each.After(lastj)
 					each.Before(lastj + 1)
@@ -229,7 +239,7 @@ func doContainsFullBenchmark(setName string, setter func() set.Set, keys []strin
 	ext := filepath.Ext(base)
 	cleanname := base[:len(base)-len(ext)]
 
-	plotname := fmt.Sprintf("%s_contains_full_%s", cleanname, setName)
+	plotname := fmt.Sprintf("timeplot_%s_contains_full_%s", cleanname, setName)
 	log.Printf("saving to %q (%gx%g)", plotname, width, height)
 
 	if err := p.Save(width, height, plotname+".png"); err != nil {
