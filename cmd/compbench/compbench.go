@@ -16,7 +16,6 @@ import (
 	"github.com/cheggaaa/pb"
 	"github.com/davecheney/profile"
 	"github.com/dustin/go-humanize"
-	inhiessmaz "github.com/inhies/go-smaz"
 	"io"
 	"log"
 	"math"
@@ -30,8 +29,6 @@ type compressor func([]byte) ([]byte, error)
 
 var compressors = map[string]compressor{ // when no match, this is the list printed
 	"mb0-smaz": mb0smaz.Compress,
-
-	"inhies-smaz": noErrorCompressor(inhiessmaz.Compress),
 
 	"cespare-smaz": noErrorCompressor(cesparesmaz.Compress),
 
