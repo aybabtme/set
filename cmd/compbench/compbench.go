@@ -9,10 +9,13 @@ import (
 	"compress/zlib"
 	"flag"
 	"fmt"
+	mb0smaz "github.com/aybabtme/smaz"
 	"github.com/aybabtme/uniplot/histogram"
 	"github.com/aybabtme/uniplot/spark"
+	cesparesmaz "github.com/cespare/go-smaz"
 	"github.com/cheggaaa/pb"
 	"github.com/dustin/go-humanize"
+	inhiessmaz "github.com/inhies/go-smaz"
 	"io"
 	"log"
 	"math"
@@ -24,10 +27,10 @@ import (
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	log.SetPrefix("[encbench] ")
+	log.SetPrefix("[compbench] ")
 	log.SetFlags(0)
 	var (
-		encoding = flag.String("enc", "lzw", "encoding algorithm to benchmark")
+		compression = flag.String("comp", "lzw", "compression algorithm to benchmark")
 	)
 	flag.Parse()
 
@@ -55,8 +58,13 @@ func main() {
 		log.Fatalf("scanning lines in %q: %v", filename, err)
 	}
 
+	compress, err := selectCompressor(*compression)
+	if err != nil {
+		log.Fatalf("not a compressor, %q: %v", *compression, err)
+	}
+
 	log.Printf("compressing %d lines...", len(lines))
-	report, err := compressLines(lines, *encoding)
+	report, err := compressLines(lines, compress)
 	if err != nil {
 		log.Fatalf("compressing lines: %v", err)
 	}
@@ -64,10 +72,49 @@ func main() {
 
 }
 
-func compressLines(lines [][]byte, encoding string) ([]Report, error) {
-	var wc io.WriteCloser
+type compressor func([]byte) ([]byte, error)
+
+func selectCompressor(name string) (compressor, error) {
+	switch name {
+	case "lzw":
+		return writeCloseCompressor(func(buf *bytes.Buffer) io.WriteCloser {
+			return lzw.NewWriter(buf, lzw.LSB, 8)
+		}), nil
+
+	case "gzip":
+		return writeCloseCompressor(func(buf *bytes.Buffer) io.WriteCloser {
+			return gzip.NewWriter(buf)
+		}), nil
+	case "flate":
+		return writeCloseCompressor(func(buf *bytes.Buffer) io.WriteCloser {
+			w, err := flate.NewWriter(buf, flate.DefaultCompression)
+			if err != nil {
+				log.Panic(err)
+			}
+			return w
+		}), nil
+
+	case "zlib":
+		return writeCloseCompressor(func(buf *bytes.Buffer) io.WriteCloser {
+			return zlib.NewWriter(buf)
+		}), nil
+
+	case "mb0-smaz":
+		return mb0smaz.Compress, nil
+
+	case "inhies-smaz":
+		return noErrorCompressor(inhiessmaz.Compress), nil
+
+	case "cespare-smaz":
+		return noErrorCompressor(cesparesmaz.Compress), nil
+
+	default:
+		return nil, fmt.Errorf("bad compressor type: %q", name)
+	}
+}
+
+func compressLines(lines [][]byte, compress compressor) ([]Report, error) {
 	var start time.Time
-	buf := bytes.NewBuffer(make([]byte, 0, 8096))
 
 	reports := make([]Report, len(lines))
 
@@ -79,38 +126,18 @@ func compressLines(lines [][]byte, encoding string) ([]Report, error) {
 
 	var before, after uint64
 	for i, line := range lines {
-		switch encoding {
-		case "lzw":
-			wc = lzw.NewWriter(buf, lzw.LSB, 8)
-		case "gzip":
-			wc = gzip.NewWriter(buf)
-		case "flate":
-			w, err := flate.NewWriter(buf, flate.DefaultCompression)
-			if err != nil {
-				return nil, err
-			}
-			wc = w
-		case "zlib":
-			wc = zlib.NewWriter(buf)
-		default:
-			return nil, fmt.Errorf("bad encoding type: %q", encoding)
-		}
 
 		start = time.Now()
-		_, err := wc.Write(line)
+		data, err := compress(line)
 		if err != nil {
 			log.Fatalf("failed to compress line %d: %v", i, err)
 		}
-		if err := wc.Close(); err != nil {
-			log.Fatalf("failed to close compressed line %d: %v", i, err)
-		}
 		reports[i].dT = time.Since(start)
 		reports[i].from = len(line)
-		reports[i].to = buf.Len()
-		reports[i].data = buf.Bytes()
+		reports[i].to = len(data)
+		reports[i].data = data
 		before += uint64(reports[i].from)
 		after += uint64(reports[i].to)
-		buf.Reset()
 		bar.Increment()
 	}
 	bar.Finish()
@@ -118,6 +145,29 @@ func compressLines(lines [][]byte, encoding string) ([]Report, error) {
 	log.Printf("before=%s\t after=%s", humanize.Bytes(before), humanize.Bytes(after))
 
 	return reports, nil
+}
+
+func writeCloseCompressor(compBuild func(buf *bytes.Buffer) io.WriteCloser) func([]byte) ([]byte, error) {
+	buf := bytes.NewBuffer(nil)
+	return func(line []byte) ([]byte, error) {
+		buf.Reset()
+		wc := compBuild(buf)
+
+		_, err := wc.Write(line)
+		if err != nil {
+			return nil, err
+		}
+		if err := wc.Close(); err != nil {
+			return nil, err
+		}
+		return buf.Bytes(), nil
+	}
+}
+
+func noErrorCompressor(f func([]byte) []byte) compressor {
+	return func(line []byte) ([]byte, error) {
+		return f(line), nil
+	}
 }
 
 func printStats(reps []Report) {
